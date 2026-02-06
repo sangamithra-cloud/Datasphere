@@ -1,10 +1,13 @@
 from fastapi import FastAPI,Depends,HTTPException
 from pydantic import BaseModel,EmailStr
 from sqlalchemy.orm import Session
-from models import Vendor
+from models import Vendor,Products
 from database import get_db
+from typing import List, Optional, Dict, Any
+from import_export import router as import_export_router
 
 app=FastAPI()
+
 
 
 class VendorCreate(BaseModel):
@@ -80,12 +83,7 @@ def create_vendor(vendor:VendorCreate,db:Session=Depends(get_db)):
     db.add(db_vendor)
     db.commit()
     db.refresh(db_vendor)
-    return {
-        "id": db_vendor.id,
-        "vendor_code": db_vendor.vendor_code,
-        "vendor_name": db_vendor.vendor_name,
-        "contact_email": db_vendor.contact_email
-    }
+    return db_vendor
 
 
 class VendorResponse(BaseModel):
@@ -172,3 +170,249 @@ def delete_vendor(id:int,db:Session=Depends(get_db)):
      return{
         "message":"vendor DELETED"
      }
+
+
+
+
+class ProductCreate(BaseModel):
+    product_code: str
+    product_name: str
+
+    parent_sku:str
+    variant_sku:str 
+    product_type:str 
+    brand_code:str 
+    brand_name:str 
+    vendor_code:str 
+    vendor_name:str 
+    category_code:str 
+    category_1:str 
+    category_2:str 
+    category_3:str 
+    category_4:str 
+    category_5:str 
+    category_6:str 
+    category_7:str 
+    category_8:str 
+    industry_code:str
+    industry_name:str
+
+    mpn:str 
+    gtin:str 
+    upc:str 
+    ean:str 
+    unspc:str 
+
+    description:str
+    prod_short_desc:str
+    prod_long_desc:str
+    images: Optional[List[str]] = []
+    videos: Optional[List[str]] = []
+    documents: Optional[List[str]] = []
+
+    features_1: str
+    features_2: str
+    features_3: str
+    features_4: str
+    features_5: str
+    features_6: str
+    features_7: str
+    features_8: str
+    features_9: str
+    features_10:str
+
+    attributes: Optional[Dict[str, Any]] = {}
+
+
+@app.post("/create_products")
+def product(product:ProductCreate,db:Session=Depends(get_db)):
+    existing = db.query(Products).filter(Products.product_code == product.product_code).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Product already exists")
+    
+    db_product=Products(
+    product_code=product.product_code,
+    product_name=product.product_name,
+    parent_sku=product.parent_sku,
+    variant_sku=product.variant_sku,
+    product_type=product.product_type,
+    brand_code=product.brand_code,
+    brand_name=product.brand_name,
+    vendor_code=product.vendor_code,
+    vendor_name=product.vendor_name,
+    category_code=product.category_code,
+    category_1=product.category_1,
+    category_2=product.category_2,
+    category_3=product.category_3,
+    category_4=product.category_4,
+    category_5=product.category_5,
+    category_6=product.category_6,
+    category_7=product.category_7,
+    category_8=product.category_8,
+    industry_code=product.industry_code,
+    industry_name=product.industry_name,
+    mpn=product.mpn,
+    gtin=product.gtin,
+    upc=product.upc,
+    ean=product.ean,
+    unspc=product.unspc,
+    description=product.description,
+    prod_short_desc=product.prod_short_desc,
+    prod_long_desc=product.prod_long_desc,
+    images=product.images,
+    videos=product.videos,
+    documents=product.documents,
+    features_1=product.features_1,
+    features_2=product.features_2,
+    features_3=product.features_3,
+    features_4=product.features_4,
+    features_5=product.features_5,
+    features_6=product.features_6,
+    features_7=product.features_7,
+    features_8=product.features_8,
+    features_9=product.features_9,
+    features_10=product.features_10,
+    attributes=product.attributes
+    )
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+
+    return db_product
+
+class ProductResponse(BaseModel):
+    product_code: str
+    product_name: str
+    parent_sku:str
+    variant_sku:str 
+    product_type:str 
+    brand_code:str 
+    brand_name:str 
+    vendor_code:str 
+    vendor_name:str 
+    industry_code:str
+    industry_name:str
+    mpn:str 
+    gtin:str 
+    upc:str 
+    ean:str 
+    unspc:str 
+    description:str
+    prod_short_desc:str
+    prod_long_desc:str
+    images: Optional[List[str]] = []
+    videos: Optional[List[str]] = []
+    documents: Optional[List[str]] = []
+
+    attributes: Optional[Dict[str, Any]] = {} 
+
+
+@app.get("/all_products",response_model=list[(ProductResponse)])
+def view_products(db:Session=Depends(get_db)):
+      return db.query(Products).all()
+
+
+
+@app.get("/product/{product_code}",response_model=ProductResponse)
+def get_product(code:str,db:Session=Depends(get_db)):
+     db_product=db.query(Products).filter(Products.product_code==code).first()
+     if not db_product:
+         raise HTTPException(status_code=404,detail="product not found")
+     return db_product
+
+
+class ProductUpdate(BaseModel):
+    product_code: str
+    product_name: str
+    parent_sku:str
+    variant_sku:str 
+    product_type:str 
+    brand_code:str 
+    brand_name:str 
+    vendor_code:str 
+    vendor_name:str 
+    category_code:str 
+    category_1:str 
+    category_2:str 
+    category_3:str 
+    category_4:str 
+    category_5:str 
+    category_6:str 
+    category_7:str 
+    category_8:str 
+    industry_code:str
+    industry_name:str
+    mpn:str 
+    gtin:str 
+    upc:str 
+    ean:str 
+    unspc:str 
+    description:str
+    prod_short_desc:str
+    prod_long_desc:str
+    images: Optional[List[str]] = []
+    videos: Optional[List[str]] = []
+    documents: Optional[List[str]] = []
+    features_1: str
+    features_2: str
+    features_3: str
+    features_4: str
+    features_5: str
+    features_6: str
+    features_7: str
+    features_8: str
+    features_9: str
+    features_10:str
+
+    attributes: Optional[Dict[str, Any]] = {}
+
+
+@app.put("/product/{product_code}", response_model=ProductResponse)
+def update_product(
+    product_code: str,
+    product: ProductUpdate,
+    db: Session = Depends(get_db)):
+    db_product = (
+        db.query(Products)
+        .filter(Products.product_code == product_code)
+        .first()
+    )
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    update_data = product.dict(exclude_unset=True)
+    update_data.pop("product_code", None)
+    for key, value in update_data.items():
+        setattr(db_product, key, value)
+    
+    db.commit()
+    db.refresh(db_product)
+
+    return db_product
+
+
+@app.delete("/product/{product_code}", status_code=204)
+def delete_product(
+    product_code: str,
+    db: Session = Depends(get_db)
+):
+    db_product = (
+        db.query(Products)
+        .filter(Products.product_code == product_code)
+        .first()
+    )
+
+    if not db_product:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    db.delete(db_product)
+    db.commit()
+
+    return
+
+
+app.include_router(import_export_router, prefix="/api")
