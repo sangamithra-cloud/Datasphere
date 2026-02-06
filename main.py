@@ -1,12 +1,75 @@
-from fastapi import FastAPI,Depends,HTTPException
+from fastapi import FastAPI,Depends,HTTPException,APIRouter
 from pydantic import BaseModel,EmailStr
 from sqlalchemy.orm import Session
-from models import Vendor,Products
+from models import Vendor,Products,User
 from database import get_db
 from typing import List, Optional, Dict, Any
-from import_export import router as import_export_router
-
+from import_export import import_export_router as import_export_router
+from hash_password import hash_password,verify_password
+from create_access import create_access_token
+from auth import  get_current_user
 app=FastAPI()
+
+
+
+protected_router = APIRouter()
+
+
+
+
+
+
+# USER
+class UserCreate(BaseModel):
+    username: str
+    user_code:str
+    email:EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+@app.post("/signup", response_model=Token)
+def signup(user: UserCreate, db: Session = Depends(get_db)):
+
+    if db.query(User).filter((User.email == user.email) | (User.user_code == user.user_code)).first():
+        raise HTTPException(status_code=400, detail="User already exists")
+    
+    hashed_password = hash_password(user.password)
+    db_user = User(
+        username=user.username,
+        user_code=user.user_code,
+        email=user.email,
+        password=hashed_password
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    
+    token = create_access_token({"sub": db_user.user_code})
+    return {"access_token": token}
+
+
+
+class UserLogin(BaseModel):
+    user_code: str
+    password: str
+
+@app.post("/login", response_model=Token)
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.user_code == user.user_code).first()
+    if not db_user or not verify_password(user.password, db_user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_access_token({"sub": db_user.user_code})
+    return {"access_token": token}
+
+
+
+
+
 
 
 
@@ -42,8 +105,9 @@ class VendorCreate(BaseModel):
 
 
 #Create vendor
-@app.post("/add_vendor")
-def create_vendor(vendor:VendorCreate,db:Session=Depends(get_db)):
+
+@protected_router.post("/add_vendor")
+def create_vendor(vendor:VendorCreate,db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
     existing_vendor=db.query(Vendor).filter(Vendor.vendor_code==vendor.vendor_code).first()
     if existing_vendor:
        raise HTTPException(status_code=400,detail="vendor already exists")
@@ -97,14 +161,14 @@ class VendorResponse(BaseModel):
     # vendor_logo_url:str
   
 #READ
-@app.get("/all_vendors",response_model=list[VendorResponse])
-def view_vendors(db:Session=Depends(get_db)):
-    return db.query(Vendor).all()
+@protected_router.get("/all_vendors",response_model=list[VendorResponse])
+def view_vendors(db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
+    return db.query(Vendor).filter(db.is_active==True).all()
 
 
-@app.get("/vendor/{id}",response_model=VendorResponse)
-def get_user(id:int,db: Session = Depends(get_db)):
-    db_vendor=db.query(Vendor).filter(Vendor.id==id).first()
+@protected_router.get("/vendor/{id}",response_model=VendorResponse)
+def get_user(vendor_code:str,db: Session = Depends(get_db),current_user:User=Depends(get_current_user)):
+    db_vendor=db.query(Vendor).filter(Vendor.vendor_code==vendor_code).first()
     if not db_vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
     return db_vendor
@@ -141,9 +205,9 @@ class VendorUpdate(BaseModel):
     dept5_phone:str
 
 #UPDATE
-@app.put("/vendor/{id}", response_model=VendorResponse)
-def update_vendor(id: int, vendor: VendorUpdate, db: Session = Depends(get_db)):
-    db_vendor = db.query(Vendor).filter(Vendor.id == id).first()
+@protected_router.put("/vendor/{id}", response_model=VendorResponse)
+def update_vendor(vendor_code:str, vendor: VendorUpdate, db: Session = Depends(get_db),current_user:User=Depends(get_current_user)):
+    db_vendor = db.query(Vendor).filter(Vendor.vendor_code == vendor_code).first()
     if not db_vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
 
@@ -159,9 +223,9 @@ def update_vendor(id: int, vendor: VendorUpdate, db: Session = Depends(get_db)):
 
 #DELETE
 
-@app.delete("/vendor/{id}")
-def delete_vendor(id:int,db:Session=Depends(get_db)):
-     db_vendor=db.query(Vendor).filter(Vendor.id==id).first()
+@protected_router.delete("/vendor/{id}")
+def delete_vendor(vendor_code:str,db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
+     db_vendor=db.query(Vendor).filter(Vendor.vendor_code == vendor_code).first()
      if not db_vendor:
          raise HTTPException(status_code=400,detail="VEndor not found")
     #  db.delete(db_vendor)
@@ -224,8 +288,8 @@ class ProductCreate(BaseModel):
     attributes: Optional[Dict[str, Any]] = {}
 
 
-@app.post("/create_products")
-def product(product:ProductCreate,db:Session=Depends(get_db)):
+@protected_router.post("/create_products")
+def product(product:ProductCreate,db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
     existing = db.query(Products).filter(Products.product_code == product.product_code).first()
 
     if existing:
@@ -308,14 +372,14 @@ class ProductResponse(BaseModel):
     attributes: Optional[Dict[str, Any]] = {} 
 
 
-@app.get("/all_products",response_model=list[(ProductResponse)])
-def view_products(db:Session=Depends(get_db)):
+@protected_router.get("/all_products",response_model=list[(ProductResponse)])
+def view_products(db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
       return db.query(Products).all()
 
 
 
-@app.get("/product/{product_code}",response_model=ProductResponse)
-def get_product(code:str,db:Session=Depends(get_db)):
+@protected_router.get("/product/{product_code}",response_model=ProductResponse)
+def get_product(code:str,db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
      db_product=db.query(Products).filter(Products.product_code==code).first()
      if not db_product:
          raise HTTPException(status_code=404,detail="product not found")
@@ -368,11 +432,11 @@ class ProductUpdate(BaseModel):
     attributes: Optional[Dict[str, Any]] = {}
 
 
-@app.put("/product/{product_code}", response_model=ProductResponse)
+@protected_router.put("/product/{product_code}", response_model=ProductResponse)
 def update_product(
     product_code: str,
     product: ProductUpdate,
-    db: Session = Depends(get_db)):
+    db: Session = Depends(get_db),current_user:User=Depends(get_current_user)):
     db_product = (
         db.query(Products)
         .filter(Products.product_code == product_code)
@@ -392,10 +456,10 @@ def update_product(
     return db_product
 
 
-@app.delete("/product/{product_code}", status_code=204)
+@protected_router.delete("/product/{product_code}", status_code=204)
 def delete_product(
     product_code: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),current_user:User=Depends(get_current_user)
 ):
     db_product = (
         db.query(Products)
@@ -415,4 +479,14 @@ def delete_product(
     return
 
 
-app.include_router(import_export_router, prefix="/api")
+app.include_router(protected_router, prefix="/api")
+protected_router.include_router(import_export_router, prefix="/api")
+
+
+
+
+@app.post("/logout")
+def logout():
+    return {
+        "message": "Logout successful. Please delete the token on the client."
+    }

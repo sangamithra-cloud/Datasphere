@@ -6,11 +6,14 @@ import pandas as pd
 import json
 from database import get_db
 from models import Vendor, Products
+from auth import get_current_user
 
-router = APIRouter()
 
 
-@router.post("/import/vendors/excel")
+import_export_router = APIRouter(dependencies=[Depends(get_current_user)])
+
+
+@import_export_router.post("/import/vendors/excel")
 async def import_vendors_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
@@ -50,7 +53,7 @@ async def import_vendors_excel(file: UploadFile = File(...), db: Session = Depen
     }
 
 
-@router.get("/export/vendors/excel")
+@import_export_router.get("/export/vendors/excel")
 def export_vendors_excel(db: Session = Depends(get_db)):
     vendors = db.query(Vendor).all()
     data = []
@@ -81,7 +84,7 @@ def export_vendors_excel(db: Session = Depends(get_db)):
     )
 
 
-@router.post("/import/products/excel")
+@import_export_router.post("/import/products/excel")
 async def import_products_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
@@ -126,7 +129,7 @@ async def import_products_excel(file: UploadFile = File(...), db: Session = Depe
         "failed_records": failed_records
     }
 
-@router.get("/export/products/excel")
+@import_export_router.get("/export/products/excel")
 def export_products_excel(db: Session = Depends(get_db)):
     products = db.query(Products).all()
     data = []

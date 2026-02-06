@@ -1,6 +1,15 @@
 from sqlalchemy import String,Boolean,Integer,Column,JSON,Text,Float
 from database import Base
 
+class User(Base):
+    __tablename__="users"
+
+    id=Column(Integer,primary_key=True,index=True)
+    username=Column(String)
+    user_code=Column(String,unique=True)
+    email=Column(String)
+    password=Column(String)
+
 
 class Vendor(Base):
     __tablename__="vendors"
