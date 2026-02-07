@@ -22,7 +22,7 @@ class Vendor(Base):
     business_type=Column(String(30))
     industry=Column(String(30))
     country=Column(String(30))
-    vendor_logo_url=Column(String)
+    vendor_logo_url=Column(JSON)
   
     dept1_poc_name=Column(String)
     dept1_email=Column(String)
