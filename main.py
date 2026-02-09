@@ -1,5 +1,5 @@
 from fastapi import FastAPI,Depends,HTTPException,APIRouter,UploadFile, File,Form
-from pydantic import BaseModel,EmailStr
+from pydantic import BaseModel,EmailStr, field_validator
 from sqlalchemy.orm import Session
 from models import Vendor,Products,User
 from database import get_db
@@ -20,14 +20,60 @@ app=FastAPI()
 
 protected_router = APIRouter()
 
-# USER
-class UserCreate(BaseModel):
-    username: str
-    user_code:str
-    email:EmailStr
-    password: str
+class StrictBaseModel(BaseModel):
+    @field_validator("*", mode="before")
+    def no_empty_strings(cls, v):
+        if isinstance(v, str) and not v.strip():
+            raise ValueError("Empty strings not allowed")
+        return v.strip()
 
-class Token(BaseModel):
+
+
+STRICT_REGEX = r"^[A-Za-z0-9 @_\-.]+$"
+
+
+def clean_required(value: str, field: str) -> str:
+    if value is None:
+        raise HTTPException(status_code=400, detail=f"{field} is required")
+    
+    value = value.strip()
+    
+    if not value:
+        raise HTTPException(status_code=400, detail=f"{field} cannot be empty or whitespace")
+    
+    if not re.fullmatch(STRICT_REGEX, value):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field} cannot contain spaces or special characters"
+        )
+    
+    return value
+
+
+def clean_optional(value: str | None, field: str) -> str:
+    if value is None or not value.strip():
+        raise HTTPException(status_code=400, detail=f"{field} cannot be empty or whitespace")
+    
+    value = value.strip()
+    
+    if not re.fullmatch(STRICT_REGEX, value):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field} cannot contain spaces or special characters"
+        )
+    
+    return value
+
+
+
+# USER
+class UserCreate(StrictBaseModel):
+        username: str
+        user_code:str
+        email:EmailStr
+        password: str
+
+class Token(StrictBaseModel):
     access_token: str
     token_type: str = "bearer"
 
@@ -54,7 +100,7 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
 
 
 
-class UserLogin(BaseModel):
+class UserLogin(StrictBaseModel):
     user_code: str
     password: str
 
@@ -125,29 +171,29 @@ def Create_vendor(
          vendor_logo_url=upload_to_cloudinary(vendor_logo.file,folder="vendors/logos")
 
     db_vendor=Vendor(
-    vendor_code=vendor_code,
-    vendor_name=vendor_name,
-    contact_email=contact_email,
-    contact_phone=contact_phone,
-    business_type=business_type,
-    industry=industry,
-    country=country,
+    vendor_code=clean_required(vendor_code, "Vendor Code"),
+    vendor_name=clean_required(vendor_name, "Vendor Name"),
+    contact_email=clean_optional(contact_email,"contact_email"),
+    contact_phone=clean_optional(contact_phone,"contact_phone"),
+    business_type=clean_optional(business_type,"business_type"),
+    industry=clean_optional(industry,"industry"),
+    country=clean_optional(country,"country"),
     vendor_logo_url=vendor_logo_url,
-    dept1_poc_name=dept1_poc_name,
-    dept1_email=dept1_email,
-    dept1_phone=dept1_phone,
-    dept2_poc_name=dept2_poc_name,
-    dept2_email=dept2_email,
-    dept2_phone=dept2_phone,
-    dept3_poc_name=dept3_poc_name,
-    dept3_email=dept3_email,
-    dept3_phone=dept3_phone,
-    dept4_poc_name=dept4_poc_name,
-    dept4_email=dept4_email,
-    dept4_phone=dept4_phone,
-    dept5_poc_name=dept5_poc_name,
-    dept5_email=dept5_email,
-    dept5_phone=dept5_phone
+    dept1_poc_name=clean_optional(dept1_poc_name,"dept1_poc_name"),
+    dept1_email=clean_optional(dept1_email,"dept1_email"),
+    dept1_phone=clean_optional(dept1_phone,"dept1_phone"),
+    dept2_poc_name=clean_optional(dept2_poc_name,"dept2_poc_name"),
+    dept2_email=clean_optional(dept2_email,"dept2_email"),
+    dept2_phone=clean_optional(dept2_phone,"dept2_phone"),
+    dept3_poc_name=clean_optional(dept3_poc_name,"dept3_poc_name"),
+    dept3_email=clean_optional(dept3_email,"dept3_email"),
+    dept3_phone=clean_optional(dept3_phone,"dept3_phone"),
+    dept4_poc_name=clean_optional(dept4_poc_name,"dept4_poc_name"),
+    dept4_email=clean_optional(dept4_email,"dept4_email"),
+    dept4_phone=clean_optional(dept4_phone,"dept4_phone"),
+    dept5_poc_name=clean_optional(dept5_poc_name,"dept5_poc_name"),
+    dept5_email=clean_optional(dept5_email,"dept5_email"),
+    dept5_phone=clean_optional(dept5_phone,"dept5_phone")
     )
 
     db.add(db_vendor)
@@ -156,7 +202,7 @@ def Create_vendor(
     return db_vendor
 
 
-class VendorResponse(BaseModel):
+class VendorResponse(StrictBaseModel):
     vendor_code:Optional[str] = None
     vendor_name:Optional[str] = None
     contact_email:Optional[str] = None
@@ -180,7 +226,7 @@ def get_user(vendor_code:str,db: Session = Depends(get_db),current_user:User=Dep
     return db_vendor
 
 
-class VendorUpdate(BaseModel):
+class VendorUpdate(StrictBaseModel):
     vendor_name: Optional[str] = None
     contact_email: Optional[EmailStr] = None
     contact_phone: Optional[str] = None
@@ -358,44 +404,44 @@ def product(
 
 
     db_product = Products(
-        product_code=product_code,
-        product_name=product_name,
-        parent_sku=parent_sku,
-        variant_sku=variant_sku,
-        product_type=product_type,
-        brand_code=brand_code,
-        brand_name=brand_name,
-        vendor_code=vendor_code,
-        vendor_name=vendor_name,
-        category_code=category_code,
-        category_1=category_1,
-        category_2=category_2,
-        category_3=category_3,
-        category_4=category_4,
-        category_5=category_5,
-        category_6=category_6,
-        category_7=category_7,
-        category_8=category_8,
-        industry_code=industry_code,
-        industry_name=industry_name,
-        mpn=mpn,
-        gtin=gtin,
-        upc=upc,
-        ean=ean,
-        unspc=unspc,
-        description=description,
-        prod_short_desc=prod_short_desc,
-        prod_long_desc=prod_long_desc,
-        features_1=features_1,
-        features_2=features_2,
-        features_3=features_3,
-        features_4=features_4,
-        features_5=features_5,
-        features_6=features_6,
-        features_7=features_7,
-        features_8=features_8,
-        features_9=features_9,
-        features_10=features_10,
+        product_code=clean_required(product_code),
+        product_name=clean_required(product_name),
+        parent_sku=clean_optional(parent_sku),
+        variant_sku=clean_optional(variant_sku),
+        product_type=clean_optional(product_type),
+        brand_code=clean_optional(brand_code),
+        brand_name=clean_optional(brand_name),
+        vendor_code=clean_optional(vendor_code),
+        vendor_name=clean_optional(vendor_name),
+        category_code=clean_optional(category_code),
+        category_1=clean_optional(category_1),
+        category_2=clean_optional(category_2),
+        category_3=clean_optional(category_3),
+        category_4=clean_optional(category_4),
+        category_5=clean_optional(category_5),
+        category_6=clean_optional(category_6),
+        category_7=clean_optional(category_7),
+        category_8=clean_optional(category_8),
+        industry_code=clean_optional(industry_code),
+        industry_name=clean_optional(industry_name),
+        mpn=clean_optional(mpn),
+        gtin=clean_optional(gtin),
+        upc=clean_optional(upc),
+        ean=clean_optional(ean),
+        unspc=clean_optional(unspc),
+        description=clean_optional(description),
+        prod_short_desc=clean_optional(prod_short_desc),
+        prod_long_desc=clean_optional(prod_long_desc),
+        features_1=clean_optional(features_1),
+        features_2=clean_optional(features_2),
+        features_3=clean_optional(features_3),
+        features_4=clean_optional(features_4),
+        features_5=clean_optional(features_5),
+        features_6=clean_optional(features_6),
+        features_7=clean_optional(features_7),
+        features_8=clean_optional(features_8),
+        features_9=clean_optional(features_9),
+        features_10=clean_optional(features_10),
         images=image_url,
         videos=video_url,
         documents=documents_url,
@@ -409,7 +455,7 @@ def product(
     return db_product
     
     
-class ProductResponse(BaseModel):
+class ProductResponse(StrictBaseModel):
     product_code: str
     product_name: str
 
@@ -524,7 +570,7 @@ def get_product(product_code: str, db: Session = Depends(get_db), current_user: 
         "attributes": parse_json_field(db_product.attributes, {}),
     }
 
-class ProductUpdate(BaseModel):
+class ProductUpdate(StrictBaseModel):
     product_name: Optional[str] = None
     parent_sku: Optional[str] = None
     variant_sku: Optional[str] = None
@@ -646,7 +692,9 @@ def delete_product(
     db.delete(db_product)
     db.commit()
 
-    return
+    return {
+        "message": "Product deleted successfully"   
+    }
 
 
 app.include_router(protected_router, prefix="/api")

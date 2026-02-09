@@ -57,7 +57,7 @@ async def import_vendors_excel(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    if not file.filename.endswith((".xlsx", ".xls")):
+    if not file.filename.endswith((".xlsx", ".xls",".csv")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
 
     try:
@@ -193,7 +193,7 @@ async def import_products_excel(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    if not file.filename.endswith((".xlsx", ".xls")):
+    if not file.filename.endswith((".xlsx", ".xls", ".csv")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
 
     try:
