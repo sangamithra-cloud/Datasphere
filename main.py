@@ -582,7 +582,32 @@ def update_product(
     db.commit()
     db.refresh(db_product)
 
-    return db_product
+    return {
+        "product_code": db_product.product_code,
+        "product_name": db_product.product_name,
+        "parent_sku": db_product.parent_sku,
+        "variant_sku": db_product.variant_sku,
+        "product_type": db_product.product_type,
+        "brand_code": db_product.brand_code,
+        "brand_name": db_product.brand_name,
+        "vendor_code": db_product.vendor_code,
+        "vendor_name": db_product.vendor_name,
+        "industry_code": db_product.industry_code,
+        "industry_name": db_product.industry_name,
+        "mpn": db_product.mpn,
+        "gtin": db_product.gtin,
+        "upc": db_product.upc,
+        "ean": db_product.ean,
+        "unspc": db_product.unspc,
+        "description": db_product.description,
+        "prod_short_desc": db_product.prod_short_desc,
+        "prod_long_desc": db_product.prod_long_desc,
+        "images": parse_json_field(db_product.images, []),
+        "videos": parse_json_field(db_product.videos, []),
+        "documents": parse_json_field(db_product.documents, []),
+        "attributes": parse_json_field(db_product.attributes, {}),
+    }
+
 
 
 @protected_router.delete("/product/{product_code}", status_code=204)
