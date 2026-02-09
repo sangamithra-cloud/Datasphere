@@ -1,11 +1,9 @@
-
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 import pandas as pd
 import json
-
 from database import get_db
 from models import Vendor, Products
 from auth import get_current_user
@@ -62,7 +60,7 @@ async def import_vendors_excel(
 
     try:
         df = pd.read_excel(file.file)
-        df = df.where(pd.notna(df), None)  # 🔥 NaN → None
+        df = df.where(pd.notna(df), None) 
         data = df.to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
@@ -240,7 +238,7 @@ async def import_products_excel(
             brand_code=clean_str(item.get("brand_code")),
             brand_name=clean_str(item.get("brand_name")),
 
-            # ✅ convert to JSON strings before saving
+         
             images=json.dumps(clean_list(item.get("images"))),
             videos=json.dumps(clean_list(item.get("videos"))),
             documents=json.dumps(clean_list(item.get("documents"))),

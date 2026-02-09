@@ -20,20 +20,36 @@ app=FastAPI()
 
 protected_router = APIRouter()
 
+
 # class StrictBaseModel(BaseModel):
 #     @field_validator("*", mode="before")
-#     def no_empty_strings(cls, v):
-#         if isinstance(v, str) and not v.strip():
-#             raise ValueError("Empty strings not allowed")
-#         return v.strip()
+#     def strip_strings(cls, v):
+#         if isinstance(v, str):
+#             return v.strip() or None
+#         return v
+
+
+
 
 
 class StrictBaseModel(BaseModel):
     @field_validator("*", mode="before")
-    def strip_strings(cls, v):
+    def reject_empty_strings(cls, v, info):
+        if v is None:
+            return None  
         if isinstance(v, str):
-            return v.strip() or None
+            v = v.strip()
+            if not v:
+                raise ValueError(f"{info.field_name} cannot be empty")
+            return v
         return v
+    
+#  @field_validator("*", mode="before")
+#     def reject_empty_strings(cls, v, info):
+#         if isinstance(v, str) and not v.strip():
+#             raise ValueError(f"{info.field_name} cannot be empty")
+#         return v
+
 
 
 
@@ -156,18 +172,7 @@ def Create_vendor(
     vendor_code = vendor_code.strip()
 
     
-    # if not vendor_code:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Vendor code cannot be empty or whitespace"
-    #     )
-
-    
-    # if not re.match(r'^[A-Za-z0-9_-]+$', vendor_code):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Vendor code can only contain letters, numbers, hyphens, or underscores"
-    #     )
+   
 
     existing_vendor=db.query(Vendor).filter(
         Vendor.vendor_code==vendor_code
@@ -630,12 +635,14 @@ class ProductUpdate(StrictBaseModel):
     features_10: Optional[str] = None
 
     attributes: Optional[Dict[str, Any]] = None
-
+    model_config = {
+        "from_attributes": True
+    }
 
 @protected_router.put("/product/{product_code}", response_model=ProductResponse)
 def update_product(
     product_code: str,
-    product: ProductUpdate,
+    payload: ProductUpdate,
     db: Session = Depends(get_db),current_user:User=Depends(get_current_user)):
     db_product = (
         db.query(Products)
@@ -645,8 +652,8 @@ def update_product(
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    update_data = product.model_dump(exclude_unset=True)
-    update_data.pop("product_code", None)
+    update_data = payload.dict(exclude_unset=True)
+    
     for key, value in update_data.items():
         setattr(db_product, key, value)
     
