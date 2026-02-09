@@ -1,6 +1,7 @@
 from sqlalchemy import String,Boolean,Integer,Column,JSON,Text,Float
 from database import Base
 
+from sqlalchemy.dialects.postgresql import JSONB
 class User(Base):
     __tablename__="users"
 
@@ -78,9 +79,11 @@ class Products(Base):
     description = Column(Text)
     prod_short_desc = Column(String(255))
     prod_long_desc = Column(Text)
-    images = Column(JSON)
-    videos = Column(JSON) 
-    documents = Column(JSON)   
+    images = Column(JSONB, default=list)
+    videos = Column(JSONB, default=list)
+    documents = Column(JSONB, default=list)
+    attributes = Column(JSONB, default=dict)
+  
     features_1 = Column(String(255))
     features_2 = Column(String(255))
     features_3 = Column(String(255))
@@ -94,4 +97,4 @@ class Products(Base):
     enrichment_status = Column(String(50), default="pending", nullable=False)
     completeness_score = Column(Float)
     completeness_details = Column(JSON)
-    attributes = Column(JSON)  
+   

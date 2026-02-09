@@ -364,7 +364,7 @@ def product(
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
-
+    print(db_product)
     return db_product
     
     
