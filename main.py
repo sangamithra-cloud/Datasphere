@@ -429,6 +429,17 @@ class ProductResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+def parse_json_field(value, default):
+    if value is None:
+        return default
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return default
+    return value
+    
 @protected_router.get("/all_products", response_model=list[ProductResponse])
 def view_products(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     products = db.query(Products).all()
