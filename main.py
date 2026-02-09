@@ -466,10 +466,12 @@ def view_products(db: Session = Depends(get_db), current_user: User = Depends(ge
             "description": product.description,
             "prod_short_desc": product.prod_short_desc,
             "prod_long_desc": product.prod_long_desc,
-            "images": json.loads(product.images) if product.images else [],
-            "videos": json.loads(product.videos) if product.videos else [],
-            "documents": json.loads(product.documents) if product.documents else [],
-            "attributes": json.loads(product.attributes) if product.attributes else {},
+            "images": parse_json_field(product.images, []),
+            "videos": parse_json_field(product.videos, []),
+            "documents": parse_json_field(product.documents, []),
+            "attributes": parse_json_field(product.attributes, {}),
+ 
+        
         })
     return result
 
