@@ -429,19 +429,71 @@ class ProductResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
-@protected_router.get("/all_products",response_model=list[ProductResponse])
-def view_products(db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
-      return db.query(Products).all()
+@protected_router.get("/all_products", response_model=list[ProductResponse])
+def view_products(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    products = db.query(Products).all()
+    result = []
+
+    for product in products:
+        result.append({
+            "product_code": product.product_code,
+            "product_name": product.product_name,
+            "parent_sku": product.parent_sku,
+            "variant_sku": product.variant_sku,
+            "product_type": product.product_type,
+            "brand_code": product.brand_code,
+            "brand_name": product.brand_name,
+            "vendor_code": product.vendor_code,
+            "vendor_name": product.vendor_name,
+            "industry_code": product.industry_code,
+            "industry_name": product.industry_name,
+            "mpn": product.mpn,
+            "gtin": product.gtin,
+            "upc": product.upc,
+            "ean": product.ean,
+            "unspc": product.unspc,
+            "description": product.description,
+            "prod_short_desc": product.prod_short_desc,
+            "prod_long_desc": product.prod_long_desc,
+            "images": json.loads(product.images) if product.images else [],
+            "videos": json.loads(product.videos) if product.videos else [],
+            "documents": json.loads(product.documents) if product.documents else [],
+            "attributes": json.loads(product.attributes) if product.attributes else {},
+        })
+    return result
 
 
+@protected_router.get("/product/{product_code}", response_model=ProductResponse)
+def get_product(product_code: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_product = db.query(Products).filter(Products.product_code == product_code).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Product not found")
 
-@protected_router.get("/product/{product_code}",response_model=ProductResponse)
-def get_product(product_code:str,db:Session=Depends(get_db),current_user:User=Depends(get_current_user)):
-     db_product=db.query(Products).filter(Products.product_code==product_code).first()
-     if not db_product:
-         raise HTTPException(status_code=404,detail="product not found")
-     return db_product
-
+    return {
+        "product_code": db_product.product_code,
+        "product_name": db_product.product_name,
+        "parent_sku": product.parent_sku,
+        "variant_sku": product.variant_sku,
+        "product_type": product.product_type,
+        "brand_code": product.brand_code,
+        "brand_name": product.brand_name,
+        "vendor_code": product.vendor_code,
+        "vendor_name": product.vendor_name,
+        "industry_code": product.industry_code,
+        "industry_name": product.industry_name,
+        "mpn": product.mpn,
+        "gtin": product.gtin,
+        "upc": product.upc,
+        "ean": product.ean,
+        "unspc": product.unspc,
+        "description": product.description,
+        "prod_short_desc": product.prod_short_desc,
+        "prod_long_desc": product.prod_long_desc,
+        "images": json.loads(db_product.images) if db_product.images else [],
+        "videos": json.loads(db_product.videos) if db_product.videos else [],
+        "documents": json.loads(db_product.documents) if db_product.documents else [],
+        "attributes": json.loads(db_product.attributes) if db_product.attributes else {},
+    }
 
 class ProductUpdate(BaseModel):
     product_name: Optional[str] = None
