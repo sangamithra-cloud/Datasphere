@@ -20,12 +20,21 @@ app=FastAPI()
 
 protected_router = APIRouter()
 
+# class StrictBaseModel(BaseModel):
+#     @field_validator("*", mode="before")
+#     def no_empty_strings(cls, v):
+#         if isinstance(v, str) and not v.strip():
+#             raise ValueError("Empty strings not allowed")
+#         return v.strip()
+
+
 class StrictBaseModel(BaseModel):
     @field_validator("*", mode="before")
-    def no_empty_strings(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError("Empty strings not allowed")
-        return v.strip()
+    def strip_strings(cls, v):
+        if isinstance(v, str):
+            return v.strip() or None
+        return v
+
 
 
 
@@ -147,18 +156,18 @@ def Create_vendor(
     vendor_code = vendor_code.strip()
 
     
-    if not vendor_code:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Vendor code cannot be empty or whitespace"
-        )
+    # if not vendor_code:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Vendor code cannot be empty or whitespace"
+    #     )
 
     
-    if not re.match(r'^[A-Za-z0-9_-]+$', vendor_code):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Vendor code can only contain letters, numbers, hyphens, or underscores"
-        )
+    # if not re.match(r'^[A-Za-z0-9_-]+$', vendor_code):
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Vendor code can only contain letters, numbers, hyphens, or underscores"
+    #     )
 
     existing_vendor=db.query(Vendor).filter(
         Vendor.vendor_code==vendor_code
@@ -466,7 +475,7 @@ class ProductResponse(StrictBaseModel):
     brand_code: Optional[str] = None
     brand_name: Optional[str] = None
 
-    vendor_code: str
+    vendor_code: Optional[str] = None
     vendor_name: Optional[str] = None
 
     industry_code: Optional[str] = None
