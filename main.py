@@ -10,6 +10,9 @@ from create_access import create_access_token
 from auth import  get_current_user
 from upload_files import upload_to_cloudinary
 import json
+import re
+from fastapi import HTTPException, status 
+
 
 app=FastAPI()
 
@@ -276,39 +279,61 @@ def product(
     attributes: str|None=Form(None),
     db:Session=Depends(get_db),
     current_user:User=Depends(get_current_user)):
+     
+    vendor_code = vendor_code.strip()
+
     
+    if not vendor_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vendor code cannot be empty or whitespace"
+        )
+
+    # Regex validation: only letters, numbers, hyphens, underscores
+    if not re.match(r'^[A-Za-z0-9_-]+$', vendor_code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vendor code can only contain letters, numbers, hyphens, or underscores"
+        )
+
     
     existing = db.query(Products).filter(Products.product_code == product_code).first()
 
     if existing:
         raise HTTPException(status_code=400, detail="Product already exists")
+    
+    ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    ALLOWED_VIDEO_TYPES = ["video/mp4", "video/avi", "video/mov"]
+    ALLOWED_DOCUMENT_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
 
-    image_url=[]
+    def validate_file(file, allowed_types, file_type_name):
+       if file.content_type not in allowed_types:
+             raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {file_type_name} file type: {file.content_type}"
+        )
+
+    image_url = []
     if images:
-        for img in  images:
-            url=upload_to_cloudinary(
-                img.file,
-                folder="products/images"
-            )
-            image_url.append(url)
+      for img in images:
+        validate_file(img, ALLOWED_IMAGE_TYPES, "image")
+        url = upload_to_cloudinary(img.file, folder="products/images")
+        image_url.append(url)
 
-    video_url=[]
+    video_url = []
     if videos:
-        for vid in  videos:
-            url=upload_to_cloudinary(
-                vid.file,
-                folder="products/videos"
-            )
-            video_url.append(url)
+      for vid in videos:
+        validate_file(vid, ALLOWED_VIDEO_TYPES, "video")
+        url = upload_to_cloudinary(vid.file, folder="products/videos")
+        video_url.append(url)
 
-    documents_url=[]
+    documents_url = []
     if documents:
-         for doc in  documents:
-             url=upload_to_cloudinary(
-                 doc.file,
-                 folder="products/description"
-             )
-             documents_url.append(url)
+      for doc in documents:
+        validate_file(doc, ALLOWED_DOCUMENT_TYPES, "document")
+        url = upload_to_cloudinary(doc.file, folder="products/documents")
+        documents_url.append(url)
+
     import json
     try:
         attributes_data = json.loads(attributes) if attributes else None
