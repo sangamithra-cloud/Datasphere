@@ -53,7 +53,7 @@ class Products(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_code = Column(String(100), unique=True, nullable=False)
     product_name = Column(String(255), nullable=False)
-    parent_sku = Column(String(100))
+    parent_sku = Column(String(100))    
     variant_sku = Column(String(100))
     product_type = Column(String(50))
     brand_code = Column(String(50))

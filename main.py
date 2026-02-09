@@ -1,5 +1,5 @@
 from fastapi import FastAPI,Depends,HTTPException,APIRouter,UploadFile, File,Form
-from pydantic import BaseModel,EmailStr, field_validator
+from pydantic import BaseModel,EmailStr, field_validator,root_validator
 from sqlalchemy.orm import Session
 from models import Vendor,Products,User
 from database import get_db
@@ -584,108 +584,108 @@ def get_product(product_code: str, db: Session = Depends(get_db), current_user: 
         "attributes": parse_json_field(db_product.attributes, {}),
     }
 
-class ProductUpdate(StrictBaseModel):
-    product_name: Optional[str] = None
-    parent_sku: Optional[str] = None
-    variant_sku: Optional[str] = None
-    product_type: Optional[str] = None
+# class ProductUpdate(StrictBaseModel):
+#     product_name: Optional[str] = None
+#     parent_sku: Optional[str] = None
+#     variant_sku: Optional[str] = None
+#     product_type: Optional[str] = None
 
-    brand_code: Optional[str] = None
-    brand_name: Optional[str] = None
+#     brand_code: Optional[str] = None
+#     brand_name: Optional[str] = None
 
-    vendor_code: Optional[str] = None
-    vendor_name: Optional[str] = None
+#     vendor_code: Optional[str] = None
+#     vendor_name: Optional[str] = None
 
-    category_code: Optional[str] = None
-    category_1: Optional[str] = None
-    category_2: Optional[str] = None
-    category_3: Optional[str] = None
-    category_4: Optional[str] = None
-    category_5: Optional[str] = None
-    category_6: Optional[str] = None
-    category_7: Optional[str] = None
-    category_8: Optional[str] = None
+#     category_code: Optional[str] = None
+#     category_1: Optional[str] = None
+#     category_2: Optional[str] = None
+#     category_3: Optional[str] = None
+#     category_4: Optional[str] = None
+#     category_5: Optional[str] = None
+#     category_6: Optional[str] = None
+#     category_7: Optional[str] = None
+#     category_8: Optional[str] = None
 
-    industry_code: Optional[str] = None
-    industry_name: Optional[str] = None
+#     industry_code: Optional[str] = None
+#     industry_name: Optional[str] = None
 
-    mpn: Optional[str] = None
-    gtin: Optional[str] = None
-    upc: Optional[str] = None
-    ean: Optional[str] = None
-    unspc: Optional[str] = None
+#     mpn: Optional[str] = None
+#     gtin: Optional[str] = None
+#     upc: Optional[str] = None
+#     ean: Optional[str] = None
+#     unspc: Optional[str] = None
 
-    description: Optional[str] = None
-    prod_short_desc: Optional[str] = None
-    prod_long_desc: Optional[str] = None
+#     description: Optional[str] = None
+#     prod_short_desc: Optional[str] = None
+#     prod_long_desc: Optional[str] = None
 
-    images: Optional[List[str]] = None
-    videos: Optional[List[str]] = None
-    documents: Optional[List[str]] = None
+#     images: Optional[List[str]] = None
+#     videos: Optional[List[str]] = None
+#     documents: Optional[List[str]] = None
 
-    features_1: Optional[str] = None
-    features_2: Optional[str] = None
-    features_3: Optional[str] = None
-    features_4: Optional[str] = None
-    features_5: Optional[str] = None
-    features_6: Optional[str] = None
-    features_7: Optional[str] = None
-    features_8: Optional[str] = None
-    features_9: Optional[str] = None
-    features_10: Optional[str] = None
+#     features_1: Optional[str] = None
+#     features_2: Optional[str] = None
+#     features_3: Optional[str] = None
+#     features_4: Optional[str] = None
+#     features_5: Optional[str] = None
+#     features_6: Optional[str] = None
+#     features_7: Optional[str] = None
+#     features_8: Optional[str] = None
+#     features_9: Optional[str] = None
+#     features_10: Optional[str] = None
 
-    attributes: Optional[Dict[str, Any]] = None
-    model_config = {
-        "from_attributes": True
-    }
+#     attributes: Optional[Dict[str, Any]] = None
+#    
 
-@protected_router.put("/product/{product_code}", response_model=ProductResponse)
-def update_product(
-    product_code: str,
-    payload: ProductUpdate,
-    db: Session = Depends(get_db),current_user:User=Depends(get_current_user)):
-    db_product = (
-        db.query(Products)
-        .filter(Products.product_code == product_code)
-        .first()
-    )
-    if not db_product:
-        raise HTTPException(status_code=404, detail="Product not found")
+# @protected_router.put("/product/{product_code}", response_model=ProductResponse)
+# def update_product(
+#     product_code: str,
+#     payload: ProductUpdate,
+#     db: Session = Depends(get_db),current_user:User=Depends(get_current_user)):
+#     db_product = (
+#         db.query(Products)
+#         .filter(Products.product_code == product_code)
+#         .first()
+#     )
+#     if not db_product:
+#         raise HTTPException(status_code=404, detail="Product not found")
 
-    update_data = payload.dict(exclude_unset=True)
+#     update_data = payload.dict(exclude_unset=True)
     
-    for key, value in update_data.items():
-        setattr(db_product, key, value)
+#     for key, value in update_data.items():
+#         setattr(db_product, key, value)
     
-    db.commit()
-    db.refresh(db_product)
+#     db.commit()
+#     db.refresh(db_product)
 
-    return {
-        "product_code": db_product.product_code,
-        "product_name": db_product.product_name,
-        "parent_sku": db_product.parent_sku,
-        "variant_sku": db_product.variant_sku,
-        "product_type": db_product.product_type,
-        "brand_code": db_product.brand_code,
-        "brand_name": db_product.brand_name,
-        "vendor_code": db_product.vendor_code,
-        "vendor_name": db_product.vendor_name,
-        "industry_code": db_product.industry_code,
-        "industry_name": db_product.industry_name,
-        "mpn": db_product.mpn,
-        "gtin": db_product.gtin,
-        "upc": db_product.upc,
-        "ean": db_product.ean,
-        "unspc": db_product.unspc,
-        "description": db_product.description,
-        "prod_short_desc": db_product.prod_short_desc,
-        "prod_long_desc": db_product.prod_long_desc,
-        "images": parse_json_field(db_product.images, []),
-        "videos": parse_json_field(db_product.videos, []),
-        "documents": parse_json_field(db_product.documents, []),
-        "attributes": parse_json_field(db_product.attributes, {}),
-    }
+#     return {
+#         "product_code": db_product.product_code,
+#         "product_name": db_product.product_name,
+#         "parent_sku": db_product.parent_sku,
+#         "variant_sku": db_product.variant_sku,
+#         "product_type": db_product.product_type,
+#         "brand_code": db_product.brand_code,
+#         "brand_name": db_product.brand_name,
+#         "vendor_code": db_product.vendor_code,
+#         "vendor_name": db_product.vendor_name,
+#         "industry_code": db_product.industry_code,
+#         "industry_name": db_product.industry_name,
+#         "mpn": db_product.mpn,
+#         "gtin": db_product.gtin,
+#         "upc": db_product.upc,
+#         "ean": db_product.ean,
+#         "unspc": db_product.unspc,
+#         "description": db_product.description,
+#         "prod_short_desc": db_product.prod_short_desc,
+#         "prod_long_desc": db_product.prod_long_desc,
+#         "images": parse_json_field(db_product.images, []),
+#         "videos": parse_json_field(db_product.videos, []),
+#         "documents": parse_json_field(db_product.documents, []),
+#         "attributes": parse_json_field(db_product.attributes, {}),
+#     }
 
+
+    
 
 
 @protected_router.delete("/product/{product_code}", status_code=204)

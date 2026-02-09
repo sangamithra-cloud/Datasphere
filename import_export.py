@@ -1,3 +1,4 @@
+import string
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
@@ -7,8 +8,15 @@ import json
 from database import get_db
 from models import Vendor, Products
 from auth import get_current_user
+import random
+import string
 
 import_export_router = APIRouter(dependencies=[Depends(get_current_user)])
+
+
+
+def generate_vendor_code(length: int = 6) -> str:
+    return "VEND-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
 
@@ -73,22 +81,27 @@ async def import_vendors_excel(
         vendor_code = clean_str(item.get("vendor_code"))
         vendor_name = clean_str(item.get("vendor_name"))
 
+              
+
         if not vendor_code or not vendor_name:
             failed_records.append({
                 "index": idx,
                 "reason": "vendor_code or vendor_name missing"
             })
             continue
+        
+        if not vendor_code:
+            vendor_code = generate_vendor_code()
 
         existing = (
             db.query(Vendor)
-            .filter(Vendor.vendor_code == vendor_code)
+            .filter((Vendor.vendor_code == vendor_code) | (Vendor.vendor_name == vendor_name))
             .first()
         )
         if existing:
             failed_records.append({
                 "index": idx,
-                "reason": "Duplicate vendor_code"
+                "reason": "Duplicate vendor_code or vendor_name"
             })
             continue
 
