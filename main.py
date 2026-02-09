@@ -97,6 +97,22 @@ def Create_vendor(
 
     db:Session=Depends(get_db),
     current_user:User=Depends(get_current_user)):
+    
+    vendor_code = vendor_code.strip()
+
+    
+    if not vendor_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vendor code cannot be empty or whitespace"
+        )
+
+    
+    if not re.match(r'^[A-Za-z0-9_-]+$', vendor_code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vendor code can only contain letters, numbers, hyphens, or underscores"
+        )
 
     existing_vendor=db.query(Vendor).filter(
         Vendor.vendor_code==vendor_code
