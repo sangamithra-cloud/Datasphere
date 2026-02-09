@@ -500,10 +500,10 @@ def get_product(product_code: str, db: Session = Depends(get_db), current_user: 
         "description": product.description,
         "prod_short_desc": product.prod_short_desc,
         "prod_long_desc": product.prod_long_desc,
-        "images": json.loads(db_product.images) if db_product.images else [],
-        "videos": json.loads(db_product.videos) if db_product.videos else [],
-        "documents": json.loads(db_product.documents) if db_product.documents else [],
-        "attributes": json.loads(db_product.attributes) if db_product.attributes else {},
+        "images": parse_json_field(product.images, []),
+        "videos": parse_json_field(product.videos, []),
+        "documents": parse_json_field(product.documents, []),
+        "attributes": parse_json_field(product.attributes, {}),
     }
 
 class ProductUpdate(BaseModel):
