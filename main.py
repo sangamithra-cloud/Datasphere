@@ -299,17 +299,17 @@ def product(
     vendor_code = vendor_code.strip()
 
     
-    if not vendor_code:
+    if not product_code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Vendor code cannot be empty or whitespace"
         )
 
     
-    if not re.match(r'^[A-Za-z0-9_-]+$', vendor_code):
+    if not re.match(r'^[A-Za-z0-9_-]+$', product_code):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Vendor code can only contain letters, numbers, hyphens, or underscores"
+            detail="Product code can only contain letters, numbers, hyphens, or underscores"
         )
 
     
