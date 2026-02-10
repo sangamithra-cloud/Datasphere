@@ -11,7 +11,7 @@ from models import Vendor, User,Products
 from auth import get_current_user
 from io import BytesIO
 import xlrd
-
+from fastapi import HTTPException
 import_export_router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
@@ -22,15 +22,18 @@ def generate_vendor_code(length: int = 6) -> str:
     return generate
     
 import math
-##FIXING NAN 
-def clean_str(val):
+
+def clean_str(val, field_name="value"):
     if val is None:
-        return None
+        raise ValueError(f"Field '{field_name}' cannot be None")
     if isinstance(val, float) and math.isnan(val):
-        return None
+        raise ValueError(f"Field '{field_name}' cannot be NaN")
+
     val = str(val).strip()
-    if val.lower() == "nan" or val == '""' or val == "":
-        return None
+
+    if val == "" or val == '' or val.lower() == "nan":
+        raise HTTPException(status_code=400, detail=f"Field '{field_name}' cannot be empty or 'NaN'")
+
     return val
 
 def clean_list(val):
@@ -97,15 +100,16 @@ async def import_vendors_excel(
     
 
     for idx, item in enumerate(data):
-        vendor_code = clean_str(item.get("vendor_code"))
-        vendor_name = clean_str(item.get("vendor_name"))
+        vendor_code = clean_str(item.get("vendor_code"),"vendor_code")
+        vendor_name = clean_str(item.get("vendor_name"),"vendor_name")
 
         if not vendor_code and not vendor_name:
             failed_records.append({
                 "index": idx,
                 "reason": "Either vendor_code or vendor_name must be provided"
             })
-            continue
+            raise HTTPException(status_code=400, detail=f"Row {idx}: Either vendor_code or vendor_name must be provided")   
+            
 
         # ---- Generate vendor code if missing (DB-safe) ----
         if not vendor_code:
@@ -130,8 +134,8 @@ async def import_vendors_excel(
             continue
 
         vendor = Vendor(
-            vendor_code=vendor_code,
-            vendor_name=vendor_name,
+            vendor_code=clean_str(vendor_code),
+            vendor_name=clean_str(vendor_name),
             contact_email=clean_str(item.get("contact_email")),
             contact_phone=clean_str(item.get("contact_phone")),
             business_type=clean_str(item.get("business_type")),
