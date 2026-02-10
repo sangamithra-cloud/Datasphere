@@ -1,3 +1,4 @@
+from fileinput import filename
 import random
 import string
 import json
@@ -71,14 +72,26 @@ async def import_vendors_excel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if not file.filename.endswith((".xlsx", ".xls", ".csv")):
-        raise HTTPException(status_code=400, detail="Only Excel files are supported")
+    
+    filename = file.filename.lower()
+
+    if filename.endswith(".csv"):
+       df = pd.read_csv(file.file, dtype=str)
+    elif filename.endswith(".xlsx"):
+       df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
+    elif filename.endswith(".xls"):
+       df = pd.read_excel(file.file, engine="xlrd", dtype=str)
+    else:
+       raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    df = df.where(pd.notna(df), None)
+ 
 
    
     try:
         # df = pd.read_excel(file.file)
         # df = df.where(pd.notna(df), None)
-        df = pd.read_excel(file.file, dtype=str)
+        df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
         df = df.where(pd.notna(df), None)
         data = df.to_dict(orient="records")
       
@@ -88,7 +101,7 @@ async def import_vendors_excel(
 
     success_count = 0
     failed_records = []
-
+    
 
     for idx, item in enumerate(data):
         vendor_code = clean_str(item.get("vendor_code"))
@@ -211,11 +224,22 @@ async def import_products_excel(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    if not file.filename.endswith((".xlsx", ".xls", ".csv")):
-        raise HTTPException(status_code=400, detail="Only Excel files are supported")
+    filename = file.filename.lower()
+
+    if filename.endswith(".csv"):
+       df = pd.read_csv(file.file, dtype=str)
+    elif filename.endswith(".xlsx"):
+       df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
+    elif filename.endswith(".xls"):
+       df = pd.read_excel(file.file, engine="xlrd", dtype=str)
+    else:
+       raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    df = df.where(pd.notna(df), None)
+ 
 
     try:
-        df = pd.read_excel(file.file)
+        df = pd.read_excel(file.file, engine="openpyxl")
         df = df.where(pd.notna(df))  
         data = df.to_dict(orient="records")
     except Exception as e:
