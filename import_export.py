@@ -29,7 +29,9 @@ def clean_str(val):
     if isinstance(val, float) and math.isnan(val):
         return None
     val = str(val).strip()
-    return val if val.lower() != "nan" else None
+    if val.lower() == "nan" or val == '""' or val == "":
+        return None
+    return val
 
 def clean_list(val):
     if val is None:
@@ -85,13 +87,12 @@ async def import_vendors_excel(
        raise HTTPException(status_code=400, detail="Unsupported file type")
 
     df = df.where(pd.notna(df), None)
- 
 
    
     try:
         # df = pd.read_excel(file.file)
         # df = df.where(pd.notna(df), None)
-        df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
+        # df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
         df = df.where(pd.notna(df), None)
         data = df.to_dict(orient="records")
       
@@ -239,7 +240,7 @@ async def import_products_excel(
  
 
     try:
-        df = pd.read_excel(file.file, engine="openpyxl")
+        # df = pd.read_excel(file.file, engine="openpyxl")
         df = df.where(pd.notna(df))  
         data = df.to_dict(orient="records")
     except Exception as e:
