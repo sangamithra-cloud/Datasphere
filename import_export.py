@@ -1,27 +1,34 @@
-import string
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from sqlalchemy.orm import Session
-from fastapi.responses import StreamingResponse
-from io import BytesIO
-import pandas as pd
-import json
-from database import get_db
-from models import Vendor, Products
-from auth import get_current_user
 import random
 import string
+import json
+import pandas as pd
+from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from sqlalchemy.orm import Session
+from database import get_db
+from models import Vendor, User,Products
+from auth import get_current_user
+from io import BytesIO
+
 
 import_export_router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 
 def generate_vendor_code(length: int = 6) -> str:
-    return "VEND-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
-
-
-
+    generate= "VEND-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    print(f"Generated vendor code: {generate}")
+    return generate
+    
+import math
+##FIXING NAN 
 def clean_str(val):
-    return str(val).strip() if val is not None else None
+    if val is None:
+        return None
+    if isinstance(val, float) and math.isnan(val):
+        return None
+    val = str(val).strip()
+    return val if val.lower() != "nan" else None
 
 def clean_list(val):
     if val is None:
@@ -61,44 +68,55 @@ def clean_dict(val):
 @import_export_router.post("/import/vendors/excel")
 async def import_vendors_excel(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    if not file.filename.endswith((".xlsx", ".xls",".csv")):
+    if not file.filename.endswith((".xlsx", ".xls", ".csv")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
 
+   
     try:
-        df = pd.read_excel(file.file)
-        df = df.where(pd.notna(df), None) 
+        # df = pd.read_excel(file.file)
+        # df = df.where(pd.notna(df), None)
+        df = pd.read_excel(file.file, dtype=str)
+        df = df.where(pd.notna(df), None)
         data = df.to_dict(orient="records")
+      
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
 
     success_count = 0
     failed_records = []
 
-    for idx, item in enumerate(data):
 
+    for idx, item in enumerate(data):
         vendor_code = clean_str(item.get("vendor_code"))
         vendor_name = clean_str(item.get("vendor_name"))
 
-              
-
-        if not vendor_code or not vendor_name:
+        if not vendor_code and not vendor_name:
             failed_records.append({
                 "index": idx,
-                "reason": "vendor_code or vendor_name missing"
+                "reason": "Either vendor_code or vendor_name must be provided"
             })
             continue
-        
-        if not vendor_code:
-            vendor_code = generate_vendor_code()
 
-        existing = (
-            db.query(Vendor)
-            .filter((Vendor.vendor_code == vendor_code) | (Vendor.vendor_name == vendor_name))
-            .first()
-        )
-        if existing:
+        # ---- Generate vendor code if missing (DB-safe) ----
+        if not vendor_code:
+            while True:
+                vendor_code = generate_vendor_code()
+                if not db.query(Vendor).filter(
+                    Vendor.vendor_code == vendor_code
+                ).first():
+                    break
+
+        # ---- Check duplicates ----
+        duplicate = db.query(Vendor).filter(
+            (Vendor.vendor_code == vendor_code) |
+            (Vendor.vendor_name == vendor_name)
+        ).first()
+
+        if duplicate:
             failed_records.append({
                 "index": idx,
                 "reason": "Duplicate vendor_code or vendor_name"
@@ -108,36 +126,27 @@ async def import_vendors_excel(
         vendor = Vendor(
             vendor_code=vendor_code,
             vendor_name=vendor_name,
-
             contact_email=clean_str(item.get("contact_email")),
             contact_phone=clean_str(item.get("contact_phone")),
             business_type=clean_str(item.get("business_type")),
             industry=clean_str(item.get("industry")),
             country=clean_str(item.get("country")),
-
-            # JSON column
             vendor_logo_url=clean_dict(item.get("vendor_logo_url")),
-
             dept1_poc_name=clean_str(item.get("dept1_poc_name")),
             dept1_email=clean_str(item.get("dept1_email")),
             dept1_phone=clean_str(item.get("dept1_phone")),
-
             dept2_poc_name=clean_str(item.get("dept2_poc_name")),
             dept2_email=clean_str(item.get("dept2_email")),
             dept2_phone=clean_str(item.get("dept2_phone")),
-
             dept3_poc_name=clean_str(item.get("dept3_poc_name")),
             dept3_email=clean_str(item.get("dept3_email")),
             dept3_phone=clean_str(item.get("dept3_phone")),
-
             dept4_poc_name=clean_str(item.get("dept4_poc_name")),
             dept4_email=clean_str(item.get("dept4_email")),
             dept4_phone=clean_str(item.get("dept4_phone")),
-
             dept5_poc_name=clean_str(item.get("dept5_poc_name")),
             dept5_email=clean_str(item.get("dept5_email")),
             dept5_phone=clean_str(item.get("dept5_phone")),
-
             is_active=True
         )
 
@@ -145,11 +154,11 @@ async def import_vendors_excel(
         try:
             db.commit()
             success_count += 1
-        except Exception as e:
+        except Exception:
             db.rollback()
             failed_records.append({
                 "index": idx,
-                "reason": str(e)
+                "reason": "Database error or duplicate detected"
             })
 
     return {
@@ -157,8 +166,6 @@ async def import_vendors_excel(
         "failed_count": len(failed_records),
         "failed_records": failed_records
     }
-
-
 
 
 @import_export_router.get("/export/vendors/excel")
@@ -209,7 +216,7 @@ async def import_products_excel(
 
     try:
         df = pd.read_excel(file.file)
-        df = df.where(pd.notna(df), None)  # NaN → None
+        df = df.where(pd.notna(df))  
         data = df.to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
@@ -237,7 +244,7 @@ async def import_products_excel(
             })
             continue
 
-        product = Products(
+        product = c(
             product_code=product_code,
             product_name=product_name,
 
