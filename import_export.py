@@ -10,7 +10,7 @@ from database import get_db
 from models import Vendor, User,Products
 from auth import get_current_user
 from io import BytesIO
-
+import xlrd
 
 import_export_router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -76,29 +76,21 @@ async def import_vendors_excel(
 ):
     
     filename = file.filename.lower()
+    try: 
+         if filename.endswith(".csv"):
+             df = pd.read_csv(file.file, dtype=str)
+         elif filename.endswith(".xlsx"):
+             df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
+         elif filename.endswith(".xls"):
+              df = pd.read_excel(file.file, engine="xlrd", dtype=str)
+         else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
 
-    if filename.endswith(".csv"):
-       df = pd.read_csv(file.file, dtype=str)
-    elif filename.endswith(".xlsx"):
-       df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
-    elif filename.endswith(".xls"):
-       df = pd.read_excel(file.file, engine="xlrd", dtype=str)
-    else:
-       raise HTTPException(status_code=400, detail="Unsupported file type")
-
-    df = df.where(pd.notna(df), None)
-
-   
-    try:
-        # df = pd.read_excel(file.file)
-        # df = df.where(pd.notna(df), None)
-        # df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
-        df = df.where(pd.notna(df), None)
-        data = df.to_dict(orient="records")
-      
-
+         df = df.where(pd.notna(df), None)
+         data = df.to_dict(orient="records")
+         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
+          raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
 
     success_count = 0
     failed_records = []
@@ -226,25 +218,21 @@ async def import_products_excel(
     db: Session = Depends(get_db)
 ):
     filename = file.filename.lower()
+    try: 
+         if filename.endswith(".csv"):
+             df = pd.read_csv(file.file, dtype=str)
+         elif filename.endswith(".xlsx"):
+             df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
+         elif filename.endswith(".xls"):
+              df = pd.read_excel(file.file, engine="xlrd", dtype=str)
+         else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
 
-    if filename.endswith(".csv"):
-       df = pd.read_csv(file.file, dtype=str)
-    elif filename.endswith(".xlsx"):
-       df = pd.read_excel(file.file, engine="openpyxl", dtype=str)
-    elif filename.endswith(".xls"):
-       df = pd.read_excel(file.file, engine="xlrd", dtype=str)
-    else:
-       raise HTTPException(status_code=400, detail="Unsupported file type")
-
-    df = df.where(pd.notna(df), None)
- 
-
-    try:
-        # df = pd.read_excel(file.file, engine="openpyxl")
-        df = df.where(pd.notna(df))  
-        data = df.to_dict(orient="records")
+         df = df.where(pd.notna(df), None)
+         data = df.to_dict(orient="records")
+         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
+          raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
 
     success_count = 0
     failed_records = []
