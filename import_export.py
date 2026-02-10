@@ -25,9 +25,9 @@ import math
 
 def clean_str(val, field_name="value"):
     if val is None:
-        raise ValueError(f"Field '{field_name}' cannot be None")
+        raise HTTPException(status_code=400, detail=f"Field '{field_name}' cannot be None")
     if isinstance(val, float) and math.isnan(val):
-        raise ValueError(f"Field '{field_name}' cannot be NaN")
+        raise HTTPException(status_code=400, detail=f"Field '{field_name}' cannot be NaN")
 
     val = str(val).strip()
 

@@ -21,13 +21,6 @@ app=FastAPI()
 protected_router = APIRouter()
 
 
-# class StrictBaseModel(BaseModel):
-#     @field_validator("*", mode="before")
-#     def strip_strings(cls, v):
-#         if isinstance(v, str):
-#             return v.strip() or None
-#         return v
-
 
 
 
@@ -40,16 +33,9 @@ class StrictBaseModel(BaseModel):
         if isinstance(v, str):
             v = v.strip()
             if not v:
-                raise ValueError(f"{info.field_name} cannot be empty")
+                raise HTTPException(status_code=400, detail=f"{info.field_name} cannot be empty")
             return v
         return v
-    
-#  @field_validator("*", mode="before")
-#     def reject_empty_strings(cls, v, info):
-#         if isinstance(v, str) and not v.strip():
-#             raise ValueError(f"{info.field_name} cannot be empty")
-#         return v
-
 
 
 
